@@ -1,1 +1,2 @@
-# Chess
+# ♟️Chess♟️
+Chess in Python
