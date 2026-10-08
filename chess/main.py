@@ -5,16 +5,15 @@ from figures.pawn import Pawn
 from figures.rook import Rook
 
 if __name__ == "__main__":
-    print("Debug")
-    color = Color("black")
-    pos = Position('c2')
-
     board = Board()
-    rook = Rook(board, pos, color)
-    pawn = Pawn(board, Position('c3'), Color('white'))
-    pawn2 = Pawn(board, Position('c4'), Color('white'))
+    rook = Rook(Color.WHITE)
+    black_pawn = Pawn(Color.BLACK)
+    white_pawn = Pawn(Color.WHITE)
 
-    print(board.board)
-    print(rook.get_possible_moves())
+    rook_pos = Position.from_str("e3")
+    board.place(rook, rook_pos)
+    board.place(black_pawn, Position.from_str("e4"))
+    board.place(white_pawn, Position.from_str("d3"))
 
-
+    print(board)
+    print(sorted(map(str, rook.get_possible_moves(board, rook_pos))))

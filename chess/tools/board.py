@@ -1,27 +1,33 @@
-from figures.figure import Figure
-from .cell import Cell
+from __future__ import annotations
 from .position import Position
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from figures.piece import Piece
 
 class Board:
     def __init__(self):
-        self._board = self._create_board()
+        self._pieces : dict[Position, Piece] = {}
 
-    @property
-    def board(self):
-        return self._board
+    def get(self, pos: Position) -> Piece | None:
+        return self._pieces.get(pos)
+
+    def place(self, piece: Piece, pos: Position) -> None:
+        self._pieces[pos] = piece
+
+    def move(self, source: Position, destination: Position) -> None:
+        self._pieces[destination] = self._pieces.pop(source)
+
+    def remove(self, pos: Position) -> None:
+        self._pieces.pop(pos, None)
 
     def __repr__(self) -> str:
-        pass # TODO
-
-    def add_figure(self, figure : Figure):
-        self._board[figure.position] = Cell(figure)
-
-    @staticmethod
-    def _create_board() -> dict[Position, Cell]:
-        board = {}
-        for num in Position.NUM_COORD:
-            for letter in Position.LETTERS_COORD:
-                board[Position(f"{letter}{num}")] = Cell()
-        return board
-
-
+        rows = []
+        for row in reversed(range(Position.SIZE)):
+            cells = []
+            for col in range(Position.SIZE):
+                piece = self.get(Position(row, col))
+                cells.append(str(piece) if piece is not None else ".")
+            rows.append(f"{row + 1} " + " ".join(f"{c:>6}" for c in cells))
+        rows.append("  " + " ".join(f"{ch:>6}" for ch in Position.CHARS))
+        return "\n".join(rows)
