@@ -1,15 +1,7 @@
 from tools.color import Color
-from tools.position import Position
 from pieces.rook import Rook
 from pieces.pawn import Pawn
-
-
-def pos(s: str) -> Position:
-    return Position.from_str(s)
-
-
-def moves(piece, board, at: str) -> set[str]:
-    return {str(p) for p in piece.get_possible_moves(board, pos(at))}
+from tests.helpers import pos, moves
 
 
 def test_rook_empty_board_has_14_moves(board):

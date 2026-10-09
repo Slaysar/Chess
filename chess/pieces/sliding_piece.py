@@ -10,6 +10,9 @@ if TYPE_CHECKING:
 
 class SlidingPiece(Piece):
 
+    ROOK_DIRS = ((1, 0), (-1, 0), (0, 1), (0, -1))
+    BISHOP_DIRS = ((1, 1), (-1, 1), (1, -1), (-1, -1))
+
     @property
     @abstractmethod
     def directions(self) -> list[tuple[int, int]]:

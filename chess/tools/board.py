@@ -1,13 +1,32 @@
 from __future__ import annotations
-from .position import Position
 from typing import TYPE_CHECKING
+from .position import Position
+from .color import Color
+from pieces.rook import Rook
+from pieces.knight import Knight
+from pieces.bishop import Bishop
+from pieces.queen import Queen
+from pieces.king import King
+from pieces.pawn import Pawn
 
 if TYPE_CHECKING:
     from pieces.piece import Piece
 
+
 class Board:
+    START_POS_PIECES = [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook]
+
     def __init__(self):
-        self._pieces : dict[Position, Piece] = {}
+        self._pieces: dict[Position, Piece] = {}
+
+    def setup(self) -> None:
+        """Начальная расстановка"""
+        self._pieces.clear()
+        for color, back_row, pawn_row in ((Color.WHITE, 0, 1), (Color.BLACK, 7, 6)):
+            for col, piece_cls in enumerate(self.START_POS_PIECES):
+                self.place(piece_cls(color), Position(back_row, col))
+            for col in range(Position.SIZE):
+                self.place(Pawn(color), Position(pawn_row, col))
 
     def get(self, pos: Position) -> Piece | None:
         return self._pieces.get(pos)
@@ -20,6 +39,25 @@ class Board:
 
     def remove(self, pos: Position) -> None:
         self._pieces.pop(pos, None)
+
+    def clear(self) -> None:
+        self._pieces.clear()
+
+    def pieces_of(self, color: Color):
+        """Все (позиция, фигура) заданного цвета"""
+        return [(p, piece) for p, piece in self._pieces.items() if piece.color is color]
+
+    def find_king(self, color: Color) -> Position | None:
+        for pos, piece in self.pieces_of(color):
+            if isinstance(piece, King):
+                return pos
+        return None
+
+    def is_in_check(self, color: Color) -> bool:
+        king_pos = self.find_king(color)
+        if king_pos is None:  # для тестиков
+            return False
+        return any(king_pos in piece.get_possible_moves(self, pos) for pos, piece in self.pieces_of(color.opposite))
 
     def __repr__(self) -> str:
         rows = []

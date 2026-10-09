@@ -18,7 +18,7 @@ class Piece(ABC):
         return f"{self.SYMBOL}_{self._color.name[0]}"
 
     @property
-    def color(self):
+    def color(self) -> Color:
         return self._color
 
     @abstractmethod

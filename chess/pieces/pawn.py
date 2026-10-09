@@ -7,9 +7,13 @@ if TYPE_CHECKING:
     from tools.board import Board
     from tools.position import Position
 
-class Pawn(Piece):
 
+class Pawn(Piece):
     SYMBOL = "P"
+
+    @property
+    def promotion_row(self) -> int:
+        return 7 if self.color is Color.WHITE else 0
 
     def get_possible_moves(self, board: Board, position: Position) -> set[Position]:
         moves = set()
