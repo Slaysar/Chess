@@ -9,12 +9,13 @@ if TYPE_CHECKING:
 
 class Piece(ABC):
 
+    SYMBOL: str = "?"
+
     def __init__(self, color: Color):
         self._color = color
 
-    @abstractmethod
     def __repr__(self) -> str:
-        ...
+        return f"{self.SYMBOL}_{self._color.name[0]}"
 
     @property
     def color(self):

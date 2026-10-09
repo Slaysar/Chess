@@ -3,7 +3,7 @@ from .position import Position
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from figures.piece import Piece
+    from pieces.piece import Piece
 
 class Board:
     def __init__(self):
