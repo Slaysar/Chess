@@ -30,9 +30,16 @@ class Pawn(Piece):
 
         for d_col in (-1, 1):
             diag = position.offset(step, d_col)
-            if diag is not None:
-                target = board.get(diag)
-                if target is not None and target.color is not self.color:
-                    moves.add(diag)
+            if diag is None:
+                continue
+            target = board.get(diag)
+            if target is not None and target.color is not self.color:
+                moves.add(diag)
+            elif target is None and diag == board.en_passant_target: # для взятия на проходе
+                pos = position.offset(0, d_col)
+                if pos is not None:
+                    victim = board.get(pos)  # клетка слева/справа от пешки
+                    if isinstance(victim, Pawn) and victim.color is not self.color:
+                        moves.add(diag)  # взятие на проходе
 
         return moves

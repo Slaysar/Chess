@@ -13,6 +13,7 @@ class Piece(ABC):
 
     def __init__(self, color: Color):
         self._color = color
+        self.has_moved = False
 
     def __repr__(self) -> str:
         return f"{self.SYMBOL}_{self._color.name[0]}"

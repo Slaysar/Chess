@@ -18,10 +18,11 @@ class Board:
 
     def __init__(self):
         self._pieces: dict[Position, Piece] = {}
+        self.en_passant_target: Position | None = None  # # клетка, через которую прошла пешка
 
     def setup(self) -> None:
         """Начальная расстановка"""
-        self._pieces.clear()
+        self.clear()
         for color, back_row, pawn_row in ((Color.WHITE, 0, 1), (Color.BLACK, 7, 6)):
             for col, piece_cls in enumerate(self.START_POS_PIECES):
                 self.place(piece_cls(color), Position(back_row, col))
@@ -42,6 +43,7 @@ class Board:
 
     def clear(self) -> None:
         self._pieces.clear()
+        self.en_passant_target = None
 
     def pieces_of(self, color: Color):
         """Все (позиция, фигура) заданного цвета"""
@@ -68,4 +70,4 @@ class Board:
                 cells.append(str(piece) if piece is not None else ".")
             rows.append(f"{row + 1} " + " ".join(f"{c:>6}" for c in cells))
         rows.append("  " + " ".join(f"{ch:>6}" for ch in Position.CHARS))
-        return "\n".join(rows)
+        return "\n\n\n".join(rows)
