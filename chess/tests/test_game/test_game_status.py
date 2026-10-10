@@ -165,3 +165,24 @@ def test_scholars_mate_black_cannot_move_after_mate(game):
     game.make_move(pos("h5"), pos("f7"))
     with pytest.raises(ValueError, match="Недопустимый ход"):
         game.make_move(pos("e8"), pos("f7"))  # нельзя взять защищённого ферзя
+
+def test_status_draw_kings_only(empty_game):
+    put(empty_game, "e1", King(Color.WHITE))
+    put(empty_game, "e8", King(Color.BLACK))
+    assert empty_game.status() == GameStatus.DRAW
+
+
+def test_status_draw_after_last_piece_captured(empty_game):
+    put(empty_game, "e1", King(Color.WHITE))
+    put(empty_game, "e8", King(Color.BLACK))
+    put(empty_game, "d2", Knight(Color.BLACK))
+    assert empty_game.status() == GameStatus.DRAW      # король и конь против короля
+    empty_game.make_move(pos("e1"), pos("d2"))         # король берёт коня
+    assert empty_game.status() == GameStatus.DRAW
+
+
+def test_status_not_draw_with_rook(empty_game):
+    put(empty_game, "e1", King(Color.WHITE))
+    put(empty_game, "e8", King(Color.BLACK))
+    put(empty_game, "a2", Rook(Color.WHITE))
+    assert empty_game.status() == GameStatus.PLAYING

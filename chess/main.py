@@ -35,11 +35,19 @@ def main() -> None:
             break
         if status is GameStatus.CHECK:
             print("Шах")
+        if status is GameStatus.DRAW:
+            print("Ничья: недостаточно материала.")
+            break
 
         raw = input(f"Ходят {game.turn} (например e2 e4, q для выхода): ").strip()
+        
         if raw.lower() in ("q", "quit", "exit"):
             print("Выход.")
             break
+
+        if raw.lower() == "history":
+            print(game.history_text() or "Ходов пока нет")
+            continue
 
         try:
             source, destination = parse_move(raw)

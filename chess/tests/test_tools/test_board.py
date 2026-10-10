@@ -7,7 +7,6 @@ from pieces.pawn import Pawn
 from tests.helpers import pos
 
 
-
 def test_setup_has_32_pieces():
     board = Board()
     board.setup()
@@ -50,3 +49,67 @@ def test_setup_twice_does_not_duplicate():
     board.setup()
     board.setup()
     assert board.get(pos("e1")) is not None
+
+
+import pytest
+from pieces.bishop import Bishop
+from pieces.knight import Knight
+from pieces.rook import Rook
+from pieces.queen import Queen
+
+
+def kings(board):
+    board.place(King(Color.WHITE), pos("e1"))
+    board.place(King(Color.BLACK), pos("e8"))
+
+
+def test_insufficient_kings_only():
+    board = Board()
+    kings(board)
+    assert board.has_insufficient_material()
+
+
+@pytest.mark.parametrize("piece", [Bishop, Knight])
+def test_insufficient_king_and_minor_piece(piece):
+    board = Board()
+    kings(board)
+    board.place(piece(Color.WHITE), pos("c3"))
+    assert board.has_insufficient_material()
+
+
+def test_insufficient_same_color_bishops():
+    board = Board()
+    kings(board)
+    board.place(Bishop(Color.WHITE), pos("c1"))
+    board.place(Bishop(Color.BLACK), pos("f8"))  # оба на полях одного цвета
+    assert board.has_insufficient_material()
+
+
+def test_sufficient_opposite_color_bishops():
+    board = Board()
+    kings(board)
+    board.place(Bishop(Color.WHITE), pos("c1"))
+    board.place(Bishop(Color.BLACK), pos("e8"))  # разный цвет
+    assert not board.has_insufficient_material()
+
+
+@pytest.mark.parametrize("piece", [Pawn, Rook, Queen])
+def test_sufficient_with_pawn_rook_or_queen(piece):
+    board = Board()
+    kings(board)
+    board.place(piece(Color.WHITE), pos("c3"))
+    assert not board.has_insufficient_material()
+
+
+def test_sufficient_two_knights():
+    board = Board()
+    kings(board)
+    board.place(Knight(Color.WHITE), pos("c3"))
+    board.place(Knight(Color.WHITE), pos("d3"))
+    assert not board.has_insufficient_material()
+
+
+def test_start_position_is_sufficient():
+    board = Board()
+    board.setup()
+    assert not board.has_insufficient_material()

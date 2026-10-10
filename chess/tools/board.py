@@ -61,6 +61,17 @@ class Board:
             return False
         return any(king_pos in piece.get_possible_moves(self, pos) for pos, piece in self.pieces_of(color.opposite))
 
+    def has_insufficient_material(self) -> bool:
+        """Мат невозможен ни у одной из сторон"""
+        others = [(pos, p) for pos, p in self._pieces.items() if not isinstance(p, King)]
+        if not others:  # король против короля
+            return True
+        if len(others) == 1 and isinstance(others[0][1], (Bishop, Knight)):
+            return True  # король + слон/конь против короля
+        if all(isinstance(p, Bishop) for _, p in others):  # только слоны одного цвета полей
+            return len({(pos.row + pos.col) % 2 for pos, _ in others}) == 1
+        return False
+
     def __repr__(self) -> str:
         rows = []
         for row in reversed(range(Position.SIZE)):
