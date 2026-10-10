@@ -36,11 +36,11 @@ def main() -> None:
         if status is GameStatus.CHECK:
             print("Шах")
         if status is GameStatus.DRAW:
-            print("Ничья: недостаточно материала.")
+            print(f"Ничья: {game.draw_reason()}.")
             break
 
         raw = input(f"Ходят {game.turn} (например e2 e4, q для выхода): ").strip()
-        
+
         if raw.lower() in ("q", "quit", "exit"):
             print("Выход.")
             break
