@@ -6,3 +6,4 @@ class GameStatus(Enum):
     CHECKMATE = "checkmate"
     STALEMATE = "stalemate"
     PLAYING = "playing"
+    DRAW = "draw"

@@ -1,7 +1,5 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from unittest import result
-
 from tools.board import Board
 from tools.color import Color
 from tools.position import Position
@@ -12,6 +10,7 @@ from pieces.rook import Rook
 from pieces.bishop import Bishop
 from pieces.knight import Knight
 from pieces.king import King
+from tools.move_record import MoveRecord, history_text
 
 if TYPE_CHECKING:
     from pieces.piece import Piece
@@ -24,6 +23,7 @@ class Game:
         self.board = Board()
         self.board.setup()
         self.turn = Color.WHITE
+        self.history: list[MoveRecord] = []
 
     def legal_moves(self, source: Position) -> set[Position]:
         """Ходы фигуры с source, после которых её король не под шахом"""
@@ -60,16 +60,21 @@ class Game:
             raise ValueError("Недопустимый ход")
 
         promotes = self.is_promotion(source, destination)
-        if promotes:
-            if promotion not in self.PROMOTION_PIECES.values():
-                raise ValueError("В эту фигуру пешку превратить нельзя")
+        if promotes and promotion not in self.PROMOTION_PIECES.values():
+            raise ValueError("В эту фигуру пешку превратить нельзя")
 
+        # всё, что зависит от позиции до хода, считаем здесь
         castling = isinstance(piece, King) and abs(destination.col - source.col) == 2
+        captured_pos = self.captured_square(source, destination)
+        is_capture = captured_pos != destination or self.board.get(destination) is not None
 
-        captured_pos = self.captured_square(source, destination)  # считаем ДО хода
+        rivals = [] if castling or isinstance(piece, Pawn) else self._rivals(piece, source, destination)
+        record = MoveRecord.build(piece, source, destination,
+                                  is_capture=is_capture, castling=castling,
+                                  promotion=promotion if promotes else None, rivals=rivals)
+
         if captured_pos != destination:
             self.board.remove(captured_pos)
-
         if castling:
             rook_from = Position(source.row, 7 if destination.col > source.col else 0)
             rook_to = Position(source.row, (source.col + destination.col) // 2)
@@ -81,12 +86,19 @@ class Game:
         if promotes:
             self.board.place(promotion(piece.color), destination)
 
-        # взятие на проходе живёт ровно один ход
         self.board.en_passant_target = None
         if isinstance(piece, Pawn) and abs(destination.row - source.row) == 2:
             self.board.en_passant_target = Position((source.row + destination.row) // 2, source.col)
 
         self.turn = self.turn.opposite
+
+        # шах и мат видны только после хода
+        status = self.status()
+        if status is GameStatus.CHECKMATE:
+            record = record.with_suffix("#")
+        elif status is GameStatus.CHECK:
+            record = record.with_suffix("+")
+        self.history.append(record)
 
     def is_promotion(self, source: Position, destination: Position) -> bool:
         """Дойдёт ли пешка с source на destination до последнего ряда"""
@@ -104,7 +116,7 @@ class Game:
         return Position(source.row, destination.col) if is_en_passant else destination
 
     def castling_moves(self, source: Position) -> set[Position]:
-        """Клетки, на которые король с source может рокироваться"""
+        """Клетки, на которые король с source может рокироваться, вычисляет рокировочные клетки"""
         king = self.board.get(source)
         if not isinstance(king, King) or king.has_moved:
             return set()
@@ -139,8 +151,21 @@ class Game:
         self.board.move(square, source)
         return safe
 
+    def _rivals(self, piece: Piece, source: Position, destination: Position) -> list[Position]:
+        """Другие фигуры того же типа и цвета, которые тоже могут пойти на destination"""
+        return [
+            pos for pos, other in self.board.pieces_of(piece.color)
+            if other is not piece and type(other) is type(piece)
+               and destination in self.legal_moves(pos)
+        ]
+
+    def history_text(self) -> str:
+        return history_text(self.history)
+
     def status(self) -> GameStatus:
-        """'playing', 'check', 'checkmate' или 'stalemate' для стороны, которая ходит"""
+        """'draw', 'playing', 'check', 'checkmate' или 'stalemate' для стороны, которая ходит"""
+        if self.board.has_insufficient_material():
+            return GameStatus.DRAW
         in_check = self.board.is_in_check(self.turn)
         if self.has_legal_moves(self.turn):
             return GameStatus.CHECK if in_check else GameStatus.PLAYING
