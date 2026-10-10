@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 
 class Game:
+    FIFTY_MOVE_LIMIT = 100
     PROMOTION_PIECES = {"q": Queen, "r": Rook, "b": Bishop, "n": Knight}
 
     def __init__(self):
@@ -24,6 +25,7 @@ class Game:
         self.board.setup()
         self.turn = Color.WHITE
         self.history: list[MoveRecord] = []
+        self.half_move_clock = 0
 
     def legal_moves(self, source: Position) -> set[Position]:
         """Ходы фигуры с source, после которых её король не под шахом"""
@@ -92,12 +94,15 @@ class Game:
 
         self.turn = self.turn.opposite
 
+        # счётчик: взятие и ход пешки его обнуляют (is_capture посчитан до хода)
+        if is_capture or isinstance(piece, Pawn):
+            self.half_move_clock = 0
+        else:
+            self.half_move_clock += 1
+
         # шах и мат видны только после хода
-        status = self.status()
-        if status is GameStatus.CHECKMATE:
-            record = record.with_suffix("#")
-        elif status is GameStatus.CHECK:
-            record = record.with_suffix("+")
+        if self.board.is_in_check(self.turn):
+            record = record.with_suffix("+" if self.has_legal_moves(self.turn) else "#")
         self.history.append(record)
 
     def is_promotion(self, source: Position, destination: Position) -> bool:
@@ -162,11 +167,19 @@ class Game:
     def history_text(self) -> str:
         return history_text(self.history)
 
+    def draw_reason(self) -> str | None:
+        if self.board.has_insufficient_material():
+            return "недостаточно материала"
+        if self.half_move_clock >= self.FIFTY_MOVE_LIMIT:
+            return "правило 50 ходов"
+        return None
+
     def status(self) -> GameStatus:
-        """'draw', 'playing', 'check', 'checkmate' или 'stalemate' для стороны, которая ходит"""
         if self.board.has_insufficient_material():
             return GameStatus.DRAW
         in_check = self.board.is_in_check(self.turn)
-        if self.has_legal_moves(self.turn):
-            return GameStatus.CHECK if in_check else GameStatus.PLAYING
-        return GameStatus.CHECKMATE if in_check else GameStatus.STALEMATE
+        if not self.has_legal_moves(self.turn):
+            return GameStatus.CHECKMATE if in_check else GameStatus.STALEMATE
+        if self.half_move_clock >= self.FIFTY_MOVE_LIMIT:
+            return GameStatus.DRAW
+        return GameStatus.CHECK if in_check else GameStatus.PLAYING
