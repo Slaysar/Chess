@@ -18,4 +18,5 @@ def game():
 def empty_game():
     game = Game()
     game.board.clear()
+    game.positions = [game.position_key()]
     return game

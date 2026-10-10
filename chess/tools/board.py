@@ -18,7 +18,7 @@ class Board:
 
     def __init__(self):
         self._pieces: dict[Position, Piece] = {}
-        self.en_passant_target: Position | None = None  # # клетка, через которую прошла пешка
+        self.en_passant_target: Position | None = None  # клетка, через которую прошла пешка
 
     def setup(self) -> None:
         """Начальная расстановка"""
@@ -71,6 +71,13 @@ class Board:
         if all(isinstance(p, Bishop) for _, p in others):  # только слоны одного цвета полей
             return len({(pos.row + pos.col) % 2 for pos, _ in others}) == 1
         return False
+
+    def pieces_key(self) -> tuple:
+        """Расстановка в виде хешируемого кортежа"""
+        return tuple(sorted(
+            (pos.row, pos.col, piece.SYMBOL, piece.color.name)
+            for pos, piece in self._pieces.items()
+        ))
 
     def __repr__(self) -> str:
         rows = []
