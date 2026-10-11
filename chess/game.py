@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 
 
 class Game:
-    # ==================== Константы и состояние партии ====================
 
     FIFTY_MOVE_LIMIT = 100
     PROMOTION_PIECES = {"q": Queen, "r": Rook, "b": Bishop, "n": Knight}
@@ -26,11 +25,9 @@ class Game:
         self.board = Board()
         self.board.setup()
         self.turn = Color.WHITE
-        self.history: list[MoveRecord] = []   # записи ходов для нотации
-        self.half_move_clock = 0              # полуходы без взятия и хода пешки (правило 50 ходов)
+        self.history: list[MoveRecord] = []  # записи ходов для нотации
+        self.half_move_clock = 0  # полуходы без взятия и хода пешки (правило 50 ходов)
         self.positions = [self.position_key()]  # ключи позиций (троекратное повторение)
-
-    # ==================== Легальность ходов ====================
 
     def legal_moves(self, source: Position) -> set[Position]:
         """Ходы фигуры с source, после которых её король не под шахом"""
@@ -56,11 +53,8 @@ class Game:
     def has_legal_moves(self, color: Color) -> bool:
         return any(self.legal_moves(pos) for pos, _ in self.board.pieces_of(color))
 
-    # ==================== Выполнение хода ====================
-
     def make_move(self, source: Position, destination: Position,
                   promotion: type[Piece] | None = None) -> None:
-        # --- проверки (до них доска не меняется) ---
         piece = self.board.get(source)
         if piece is None:
             raise ValueError("На клетке нет фигуры")
@@ -73,18 +67,15 @@ class Game:
         if promotes and promotion not in self.PROMOTION_PIECES.values():
             raise ValueError("В эту фигуру пешку превратить нельзя")
 
-        # --- факты о позиции ДО хода (после хода их уже не восстановить) ---
         castling = isinstance(piece, King) and abs(destination.col - source.col) == 2
         captured_pos = self.captured_square(source, destination)
         is_capture = captured_pos != destination or self.board.get(destination) is not None
 
-        # --- запись хода в нотации (суффикс шаха и мата добавится после хода) ---
         rivals = [] if castling or isinstance(piece, Pawn) else self._rivals(piece, source, destination)
         record = MoveRecord.build(piece, source, destination,
                                   is_capture=is_capture, castling=castling,
                                   promotion=promotion if promotes else None, rivals=rivals)
 
-        # --- изменение доски ---
         if captured_pos != destination:
             self.board.remove(captured_pos)  # взятие на проходе: жертва стоит не на destination
         if castling:
@@ -120,8 +111,6 @@ class Game:
             record = record.with_suffix("+" if self.has_legal_moves(self.turn) else "#")
         self.history.append(record)
 
-    # ==================== Особые правила: превращение и взятие на проходе ====================
-
     def is_promotion(self, source: Position, destination: Position) -> bool:
         """Дойдёт ли пешка с source на destination до последнего ряда"""
         piece = self.board.get(source)
@@ -136,8 +125,6 @@ class Game:
                 and self.board.get(destination) is None  # диагональ на пустую клетку
         )
         return Position(source.row, destination.col) if is_en_passant else destination
-
-    # ==================== Особые правила: рокировка ====================
 
     def castling_moves(self, source: Position) -> set[Position]:
         """Клетки, на которые король с source может рокироваться, вычисляет рокировочные клетки"""
@@ -175,8 +162,6 @@ class Game:
         self.board.move(square, source)
         return safe
 
-    # ==================== Позиция и троекратное повторение ====================
-
     def _castling_rights(self) -> tuple[bool, ...]:
         """Сохранилось ли право на рокировку: (белые O-O, белые O-O-O, чёрные O-O, чёрные O-O-O)"""
         rights = []
@@ -211,8 +196,6 @@ class Game:
         window = self.positions[-(self.half_move_clock + 1):]
         return window.count(self.positions[-1])
 
-    # ==================== Статус партии и ничьи ====================
-
     def draw_reason(self) -> str | None:
         if self.board.has_insufficient_material():
             return "недостаточно материала"
@@ -231,8 +214,6 @@ class Game:
         if self.repetition_count() >= 3 or self.half_move_clock >= self.FIFTY_MOVE_LIMIT:
             return GameStatus.DRAW
         return GameStatus.CHECK if in_check else GameStatus.PLAYING
-
-    # ==================== История и нотация ====================
 
     def _rivals(self, piece: Piece, source: Position, destination: Position) -> list[Position]:
         """Другие фигуры того же типа и цвета, которые тоже могут пойти на destination"""
