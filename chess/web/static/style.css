@@ -1,0 +1,88 @@
+:root {
+  --size: min(92vw, 560px);
+  --light: #f0d9b5;
+  --dark: #b58863;
+}
+body { margin: 0; font-family: system-ui, sans-serif; background: #312e2b; color: #eee; }
+main { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px; }
+#status { font-size: 1.1rem; min-height: 1.5em; }
+#error { color: #ff8a80; min-height: 1.2em; }
+
+/* ряды и колонки фиксированы, поэтому пустой ряд не сплющивается */
+#board {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-rows: repeat(8, minmax(0, 1fr));
+  width: var(--size);
+  height: var(--size);
+  border: 4px solid #3c3935;
+  box-sizing: content-box;
+}
+.cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: calc(var(--size) / 8 * 0.8);
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+}
+.cell.light { background: var(--light); }
+.cell.dark { background: var(--dark); }
+
+/* одинаковые закрашенные значки, цвет задаётся здесь */
+.white-piece { color: #fff; text-shadow: 0 0 2px #000, 0 0 2px #000, 0 0 3px #000; }
+.black-piece { color: #1a1a1a; text-shadow: 0 0 1px rgba(255, 255, 255, 0.35); }
+
+.cell.last { box-shadow: inset 0 0 0 100px rgba(255, 235, 59, 0.35); }
+.cell.selected { box-shadow: inset 0 0 0 100px rgba(76, 175, 80, 0.5); }
+.cell.check { box-shadow: inset 0 0 0 100px rgba(244, 67, 54, 0.6); }
+
+.cell.target::after {
+  content: "";
+  position: absolute;
+  width: 28%;
+  height: 28%;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+}
+.cell.target.capture::after {
+  width: 90%;
+  height: 90%;
+  background: none;
+  border: 4px solid rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
+}
+
+button {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 6px;
+  background: #769656;
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+}
+button:hover { background: #86a666; }
+section { width: var(--size); }
+#history { columns: 2; padding-left: 1.5em; margin: 0; }
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+.overlay[hidden] { display: none; }
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  background: #3c3935;
+  border-radius: 10px;
+}

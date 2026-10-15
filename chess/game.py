@@ -84,7 +84,8 @@ class Game:
             self.board.move(rook_from, rook_to)
             self.board.get(rook_to).has_moved = True
 
-        self.board.move(source, destination)
+        self.board.move(source, destination) # взаимодействие с доской
+
         piece.has_moved = True
         if promotes:
             self.board.place(promotion(piece.color), destination)

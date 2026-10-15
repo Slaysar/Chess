@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 from .piece import Piece
+from tools.color import Color
 
 if TYPE_CHECKING:
     from tools.board import Board
@@ -8,12 +9,15 @@ if TYPE_CHECKING:
 
 
 class King(Piece):
-
     SYMBOL = "K"
     DIR = [(1, 1), (1, 0), (1, -1), (0, -1),
            (-1, -1), (-1, 0), (-1, 1), (0, 1)]
 
-    def get_possible_moves(self, board: Board, position: Position) -> set[Position]: # псевдоходы без проверки на шах
+    def __init__(self, color: Color):
+        super().__init__(color)
+        self.has_moved = False
+
+    def get_possible_moves(self, board: Board, position: Position) -> set[Position]:  # псевдоходы без проверки на шах
         moves = set()
         for d_row, d_col in self.DIR:
             target_pos = position.offset(d_row, d_col)
@@ -23,4 +27,3 @@ class King(Piece):
             if target is None or target.color is not self.color:
                 moves.add(target_pos)
         return moves
-
