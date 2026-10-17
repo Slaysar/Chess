@@ -7,8 +7,8 @@ if TYPE_CHECKING:
     from tools.color import Color
     from tools.position import Position
 
-VALUES = {"P": 1, "N": 3, "B": 3, "R": 5, "Q": 9, "K": 0}  # цена фигур в пешках
-MATE = 1000  # оценка мата
+VALUES = {"P": 1, "N": 3, "B": 3, "R": 5, "Q": 9, "K": 0}
+MATE = 1000
 
 
 def evaluate(board: Board, color: Color) -> int:

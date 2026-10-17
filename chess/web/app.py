@@ -3,6 +3,7 @@ import uuid
 from pathlib import Path
 from threading import Lock
 
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -21,7 +22,7 @@ from web.serializers import GAME_OVER, serialize
 #      -> Game (правила) -> serialize() -> JSON -> uvicorn -> app.js -> render()
 
 
-BOTS = {"greedy": GreedyBot, "advanced": lambda: MinimaxBot(depth=5)}
+BOTS = {"greedy": GreedyBot, "advanced": lambda: MinimaxBot(depth=4)}
 
 games: dict[str, Game] = {}
 opponents: dict[str, str] = {}  # id партии -> "human" / "greedy" / "advanced"
@@ -143,3 +144,5 @@ def bot_move(game_id: str):
             return state_of(game_id, game)  # не очередь бота или партия кончилась: просто состояние
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+

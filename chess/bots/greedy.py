@@ -13,5 +13,5 @@ class GreedyBot(Bot):
             scored.append((evaluate(game.board, me), (source, destination)))
             undo_move(game.board, source, destination, saved)
 
-        source, destination = self.pick_best(scored)
+        source, destination = self.pick_best(scored, game.board)
         return self.finish_move(game, source, destination)
