@@ -1,16 +1,18 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from bots.minimax import MinimaxBot
 from tools.color import Color
 from pieces.king import King
 from pieces.pawn import Pawn
 from tests.helpers import pos
 from web.app import app, games
+from web.app import BOTS
 
 
 @pytest.fixture
 def client():
-    games.clear()                      # партии лежат в глобальном словаре
+    games.clear()  # партии лежат в глобальном словаре
     return TestClient(app)
 
 
@@ -242,3 +244,40 @@ def test_promotion_without_choice_returns_400(client):
     game_id = promotion_game(client)
     assert move(client, game_id, "e7", "e8").status_code == 400
     assert squares(client.get(f"/api/games/{game_id}").json())["e7"]["type"] == "P"
+
+
+def test_game_against_bot_replies_in_separate_request(client):
+    data = client.post("/api/games", json={"opponent": "greedy"}).json()
+    after_human = move(client, data["id"], "e2", "e4").json()
+    assert len(after_human["history"]) == 1
+    assert after_human["turn"] == "black"
+
+    reply = client.post(f"/api/games/{data['id']}/bot-move")
+    assert reply.status_code == 200
+    state = reply.json()
+    assert len(state["history"]) == 2
+    assert state["turn"] == "white"
+
+
+def test_game_against_advanced_bot(client, monkeypatch):
+    monkeypatch.setitem(BOTS, "advanced", lambda: MinimaxBot(depth=2))    # в тестах глубина поменьше
+    data = client.post("/api/games", json={"opponent": "advanced"}).json()
+    move(client, data["id"], "e2", "e4")
+    state = client.post(f"/api/games/{data['id']}/bot-move").json()
+    assert len(state["history"]) == 2
+
+
+def test_bot_move_does_nothing_on_humans_turn(client):
+    data = client.post("/api/games", json={"opponent": "greedy"}).json()
+    response = client.post(f"/api/games/{data['id']}/bot-move")
+    assert response.status_code == 200
+    assert response.json()["history"] == []
+
+
+def test_bot_move_without_bot_returns_400(client):
+    game_id = new_game(client)
+    assert client.post(f"/api/games/{game_id}/bot-move").status_code == 400
+
+
+def test_bot_move_unknown_game_returns_404(client):
+    assert client.post("/api/games/nope/bot-move").status_code == 404

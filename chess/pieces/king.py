@@ -13,10 +13,6 @@ class King(Piece):
     DIR = [(1, 1), (1, 0), (1, -1), (0, -1),
            (-1, -1), (-1, 0), (-1, 1), (0, 1)]
 
-    def __init__(self, color: Color):
-        super().__init__(color)
-        self.has_moved = False
-
     def get_possible_moves(self, board: Board, position: Position) -> set[Position]:  # псевдоходы без проверки на шах
         moves = set()
         for d_row, d_col in self.DIR:

@@ -87,6 +87,7 @@ class Game:
         self.board.move(source, destination) # взаимодействие с доской
 
         piece.has_moved = True
+
         if promotes:
             self.board.place(promotion(piece.color), destination)
 
