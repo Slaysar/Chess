@@ -9,13 +9,22 @@
 <body>
   <main>
     <div id="status"></div>
+    <div id="clock-top" class="clock"></div>
     <div id="board"></div>
+    <div id="clock-bottom" class="clock"></div>
+    <div id="invite" hidden></div>
     <div id="error" role="alert"></div>
     <label>Соперник:
       <select id="opponent">
-        <option value="human">Человек (за одним экраном)</option>
+        <option value="human">Человек (по ссылке)</option>
         <option value="greedy">Жадный бот</option>
         <option value="advanced">Продвинутый бот</option>
+      </select>
+    </label>
+    <label>Время:
+      <select id="minutes">
+        <option value="5">Блиц 5 минут</option>
+        <option value="10">Классика 10 минут</option>
       </select>
     </label>
     <button id="new-game" type="button">Новая партия</button>

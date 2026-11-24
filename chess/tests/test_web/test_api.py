@@ -2,12 +2,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from bots.minimax import MinimaxBot
-from tools.color import Color
 from pieces.king import King
 from pieces.pawn import Pawn
 from tests.helpers import pos
-from web.app import app, games
 from web.app import BOTS
+from tools.color import Color
+from web.app import app, games, players, invites
 
 
 @pytest.fixture
@@ -21,9 +21,16 @@ def new_game(client) -> str:
 
 
 def move(client, game_id, source, destination, promotion=None):
+    game = games.get(game_id)
+    token = None
+    if game:
+        if game.turn is Color.BLACK and Color.BLACK not in players[game_id] and game_id in invites:
+            players[game_id][Color.BLACK] = invites.pop(game_id)   # чёрные «присоединились»
+        token = players[game_id].get(game.turn)
+    headers = {"X-Player-Token": token} if token else {}
     return client.post(f"/api/games/{game_id}/move",
-                       json={"source": source, "destination": destination, "promotion": promotion})
-
+                       json={"source": source, "destination": destination, "promotion": promotion},
+                       headers=headers)
 
 def squares(state) -> dict:
     return {p["square"]: p for p in state["pieces"]}

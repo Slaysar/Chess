@@ -8,6 +8,7 @@ from pieces.bishop import Bishop
 from pieces.queen import Queen
 from pieces.king import King
 from pieces.pawn import Pawn
+from pieces.sliding_piece import SlidingPiece
 
 if TYPE_CHECKING:
     from pieces.piece import Piece
@@ -49,17 +50,63 @@ class Board:
         """Все (позиция, фигура) заданного цвета"""
         return [(p, piece) for p, piece in self._pieces.items() if piece.color is color]
 
+    def all_pieces(self):
+        """Все фигуры без позиций (для быстрой оценки материала, без создания списков)"""
+        return self._pieces.values()
+
     def find_king(self, color: Color) -> Position | None:
-        for pos, piece in self.pieces_of(color):
-            if isinstance(piece, King):
+        for pos, piece in self._pieces.items():
+            if piece.color is color and isinstance(piece, King):
                 return pos
         return None
+
+    def is_attacked(self, square: Position, by: Color) -> bool:
+        """Бьёт ли хоть одна фигура цвета by клетку square.
+        Смотрим из самой клетки: прыжки коня, соседи-короли, две клетки пешек и лучи слонов/ладей.
+        Так не нужно строить все ходы соперника, как раньше"""
+        get = self._pieces.get
+
+        for d_row, d_col in Knight.JUMPS:
+            pos = square.offset(d_row, d_col)
+            if pos is not None:
+                piece = get(pos)
+                if piece is not None and piece.color is by and isinstance(piece, Knight):
+                    return True
+
+        for d_row, d_col in King.DIR:
+            pos = square.offset(d_row, d_col)
+            if pos is not None:
+                piece = get(pos)
+                if piece is not None and piece.color is by and isinstance(piece, King):
+                    return True
+
+        # пешка бьёт «вперёд по диагонали», значит стоит на ряд позади клетки
+        back = -1 if by is Color.WHITE else 1
+        for d_col in (-1, 1):
+            pos = square.offset(back, d_col)
+            if pos is not None:
+                piece = get(pos)
+                if piece is not None and piece.color is by and isinstance(piece, Pawn):
+                    return True
+
+        for directions, kinds in ((SlidingPiece.ROOK_DIRS, (Rook, Queen)),
+                                  (SlidingPiece.BISHOP_DIRS, (Bishop, Queen))):
+            for d_row, d_col in directions:
+                pos = square.offset(d_row, d_col)
+                while pos is not None:
+                    piece = get(pos)
+                    if piece is not None:
+                        if piece.color is by and isinstance(piece, kinds):
+                            return True
+                        break  # луч упёрся в фигуру
+                    pos = pos.offset(d_row, d_col)
+        return False
 
     def is_in_check(self, color: Color) -> bool:
         king_pos = self.find_king(color)
         if king_pos is None:  # для тестиков
             return False
-        return any(king_pos in piece.get_possible_moves(self, pos) for pos, piece in self.pieces_of(color.opposite))
+        return self.is_attacked(king_pos, color.opposite)
 
     def has_insufficient_material(self) -> bool:
         """Мат невозможен ни у одной из сторон"""

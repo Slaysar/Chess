@@ -12,9 +12,12 @@ MATE = 1000
 
 
 def evaluate(board: Board, color: Color) -> int:
-    mine = sum(VALUES[piece.SYMBOL] for _, piece in board.pieces_of(color))
-    theirs = sum(VALUES[piece.SYMBOL] for _, piece in board.pieces_of(color.opposite))
-    return mine - theirs
+    """Материал color минус материал соперника, один проход без промежуточных списков"""
+    total = 0
+    for piece in board.all_pieces():
+        value = VALUES[piece.SYMBOL]
+        total += value if piece.color is color else -value
+    return total
 
 
 def all_moves(game: Game, color: Color) -> list[tuple[Position, Position]]:

@@ -4,28 +4,32 @@ const GLYPHS = {K: "♚", Q: "♛", R: "♜", B: "♝", N: "♞", P: "♟\uFE0E"
 const NO_MOVES = {moves: [], promotions: []};
 
 let busy = false;
-let gameId = null;
+let refreshing = false;
+let session = null;     // {id, token, color}: какая это партия и за кого мы в ней играем
 let state = null;
+let clockAt = 0;        // когда пришло состояние часов (performance.now), от этого момента считаем секунды
 let selected = null;
 let legal = NO_MOVES;
 
 async function api(path, options = {}) {
-    const res = await fetch(path, {headers: {"Content-Type": "application/json"}, ...options});
+    const headers = {"Content-Type": "application/json"};
+    if (session) headers["X-Player-Token"] = session.token;   // по токену сервер понимает, кто ходит
+    const res = await fetch(path, {...options, headers});
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.detail || "Ошибка запроса");
     return data;
 }
 
-function saveId(id) {
+function saveSession() {
     try {
-        localStorage.setItem("chess-game-id", id);
+        localStorage.setItem("chess-session", JSON.stringify(session));
     } catch (_) {
     }
 }
 
-function loadId() {
+function loadSession() {
     try {
-        return localStorage.getItem("chess-game-id");
+        return JSON.parse(localStorage.getItem("chess-session"));
     } catch (_) {
         return null;
     }
@@ -33,15 +37,17 @@ function loadId() {
 
 async function newGame() {
     const opponent = document.getElementById("opponent").value;
-    const data = await api("/api/games", {method: "POST", body: JSON.stringify({opponent})});
-    gameId = data.id;
-    saveId(gameId);
+    const minutes = Number(document.getElementById("minutes").value);
+    const data = await api("/api/games", {method: "POST", body: JSON.stringify({opponent, minutes})});
+    session = {id: data.id, token: data.token, color: data.color};
+    saveSession();
     setState(data);
 }
 
 function setState(newState) {
     document.getElementById("opponent").value = newState.opponent;
     state = newState;
+    clockAt = performance.now();
     selected = null;
     legal = NO_MOVES;
     render();
@@ -52,6 +58,9 @@ function showError(message) {
 }
 
 function statusText() {
+    if (state.status === "timeout") {
+        return `Время вышло. Победили ${state.winner === "white" ? "белые" : "чёрные"}.`;
+    }
     if (state.opponent !== "human" && state.turn === "black" && !state.game_over) {
         return "Бот думает…";
     }
@@ -64,21 +73,59 @@ function statusText() {
         case "draw":
             return `Ничья: ${state.draw_reason}.`;
         case "check":
-            return `Шах. Ход ${side}.`;
+            return `Шах. Ход ${side}.` + (state.turn === session.color ? " Ваш ход." : "");
         default:
-            return `Ход ${side}.`;
+            return `Ход ${side}.` + (state.turn === session.color ? " Ваш ход." : "");
     }
 }
 
+// ---------- часы ----------
+
+function remainingOf(color) {
+    const clock = state.clock;
+    if (!clock) return null;
+    let left = clock[color];
+    if (clock.running === color) left -= (performance.now() - clockAt) / 1000;   // между ответами сервера считаем сами
+    return Math.max(left, 0);
+}
+
+function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function renderClocks() {
+    if (!state || !session) return;
+    const mine = session.color;
+    const other = mine === "white" ? "black" : "white";
+    for (const [id, color] of [["clock-bottom", mine], ["clock-top", other]]) {
+        const left = remainingOf(color);
+        const element = document.getElementById(id);
+        element.textContent = `${color === "white" ? "Белые" : "Чёрные"}  ${left === null ? "" : formatTime(left)}`;
+        element.classList.toggle("active", !!state.clock && state.clock.running === color && !state.game_over);
+    }
+}
+
+// ---------- доска ----------
+
 function render() {
     document.getElementById("status").textContent = statusText();
+    renderClocks();
+
+    const invite = document.getElementById("invite");
+    invite.hidden = !state.waiting_for_opponent;
+    invite.textContent = `Ссылка для соперника: ${location.origin}/?game=${session.id}`;
 
     const pieces = Object.fromEntries(state.pieces.map((p) => [p.square, p]));
     const board = document.getElementById("board");
     board.innerHTML = "";
 
-    for (let row = 7; row >= 0; row--) {           // белые внизу
-        for (let col = 0; col < 8; col++) {
+    const flip = session.color === "black";          // свои фигуры всегда внизу
+    for (let i = 0; i < 8; i++) {
+        const row = flip ? i : 7 - i;
+        for (let j = 0; j < 8; j++) {
+            const col = flip ? 7 - j : j;
             const square = FILES[col] + (row + 1);
             const cell = document.createElement("div");
             cell.className = "cell " + ((row + col) % 2 === 0 ? "dark" : "light");
@@ -116,6 +163,7 @@ function render() {
 
 async function onCellClick(square) {
     if (state.game_over || busy) return;
+    if (state.turn !== session.color) return;        // чужой ход: ничего не выбираем
     showError("");
     try {
         if (selected && legal.moves.includes(square)) {
@@ -126,7 +174,7 @@ async function onCellClick(square) {
             }
             busy = true;
             try {
-                const data = await api(`/api/games/${gameId}/move`, {
+                const data = await api(`/api/games/${session.id}/move`, {
                     method: "POST",
                     body: JSON.stringify({source: selected, destination: square, promotion}),
                 });
@@ -141,7 +189,7 @@ async function onCellClick(square) {
         const piece = state.pieces.find((p) => p.square === square);
         if (piece && piece.color === state.turn) {
             selected = square;
-            legal = await api(`/api/games/${gameId}/moves?square=${square}`);
+            legal = await api(`/api/games/${session.id}/moves?square=${square}`);
         } else {
             selected = null;
             legal = NO_MOVES;
@@ -171,8 +219,41 @@ function askPromotion() {
 
 async function botReply() {
     if (state.opponent === "human" || state.game_over || state.turn !== "black") return;
-    setState(await api(`/api/games/${gameId}/bot-move`, {method: "POST"}));
+    setState(await api(`/api/games/${session.id}/bot-move`, {method: "POST"}));
 }
+
+// ---------- опрос сервера ----------
+
+async function refresh() {
+    if (!session || !state || busy || refreshing) return;
+    refreshing = true;
+    try {
+        const data = await api(`/api/games/${session.id}`);
+        const changed = data.history.length !== state.history.length
+            || data.status !== state.status
+            || data.waiting_for_opponent !== state.waiting_for_opponent;
+        if (changed) {
+            setState(data);                 // соперник сходил, присоединился или кончилось время
+        } else {
+            state.clock = data.clock;       // просто сверяем часы с сервером
+            clockAt = performance.now();
+        }
+    } catch (_) {
+    } finally {
+        refreshing = false;
+    }
+}
+
+setInterval(() => {
+    if (!state) return;
+    renderClocks();
+    const running = state.clock && state.clock.running;
+    if (!state.game_over && running && remainingOf(running) <= 0) refresh();   // спросить у сервера про флажок
+}, 250);
+
+setInterval(() => {
+    if (state && !state.game_over && state.opponent === "human") refresh();    // ждём ход человека-соперника
+}, 1000);
 
 document.getElementById("new-game").addEventListener("click", () => newGame().catch((e) => showError(e.message)));
 
@@ -182,11 +263,19 @@ document.getElementById("opponent").addEventListener("change", () => {
 
 
 (async function init() {
-    const saved = loadId();
-    if (saved) {
-        try {
-            gameId = saved;
-            setState(await api(`/api/games/${gameId}`));
+    const wanted = new URLSearchParams(location.search).get("game");   // ?game=<id> из ссылки соперника
+    const saved = loadSession();
+    try {
+        if (wanted && (!saved || saved.id !== wanted)) {
+            const data = await api(`/api/games/${wanted}/join`, {method: "POST"});
+            session = {id: wanted, token: data.token, color: data.color};
+            saveSession();
+            setState(data);
+            return;
+        }
+        if (saved) {
+            session = saved;
+            setState(await api(`/api/games/${session.id}`));
             busy = true;
             try {
                 await botReply();
@@ -194,8 +283,10 @@ document.getElementById("opponent").addEventListener("change", () => {
                 busy = false;
             }
             return;
-        } catch (_) { /* партии нет (сервер перезапускался) */
         }
+    } catch (e) {
+        session = null;                     // партии нет (сервер перезапускался) или место занято
+        if (wanted) showError(e.message);
     }
     await newGame();
 })();

@@ -8,6 +8,22 @@ main { display: flex; flex-direction: column; align-items: center; gap: 12px; pa
 #status { font-size: 1.1rem; min-height: 1.5em; }
 #error { color: #ff8a80; min-height: 1.2em; }
 
+/* часы: у того, чей ход идёт, подсвечены */
+.clock {
+  width: var(--size);
+  box-sizing: border-box;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: #3c3935;
+  font-size: 1.3rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.clock.active { background: #769656; }
+
+#invite { width: var(--size); font-size: 0.9rem; word-break: break-all; text-align: center; }
+#invite[hidden] { display: none; }
+
 /* ряды и колонки фиксированы, поэтому пустой ряд не сплющивается */
 #board {
   display: grid;
