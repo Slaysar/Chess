@@ -16,6 +16,7 @@ class Bot(ABC):
 
     def __init__(self, seed: int | None = None):
         self.rng = random.Random(seed)
+        self.moves_made = 0  # сколько ходов бот уже сделал в партии
 
     @abstractmethod
     def choose_move(self, game: Game) -> tuple[Position, Position, type[Piece] | None]:
@@ -32,7 +33,29 @@ class Bot(ABC):
             if score == best
         ]
 
+        self.moves_made += 1
+
+        if self.moves_made <= 3:
+            best_center = max(self._centrality(move) for move in best_moves)
+            best_moves = [
+                move for move in best_moves
+                if self._centrality(move) >= best_center - 2.5
+            ]
+
         return self.rng.choice(best_moves)
+
+    @staticmethod
+    def _center_dist_sq(pos: Position) -> float:
+        return (pos.row - 3.5) ** 2 + (pos.col - 3.5) ** 2
+
+    @classmethod
+    def _centrality(cls, move) -> float:
+        source, destination = move
+        source_dist = cls._center_dist_sq(source)
+        dest_dist = cls._center_dist_sq(destination)
+
+        progress = source_dist - dest_dist
+        return -dest_dist + 0.1 * progress
 
     @staticmethod
     def finish_move(game: Game, source: Position, destination: Position):
