@@ -12,7 +12,7 @@ VICTIMS = {**VALUES, "K": 100}
 
 # ---------- таблица транспозиций ----------
 # Одна и та же позиция часто получается разным порядком ходов. Результат поиска запоминаем
-# по хешу позиции (Zobrist) и второй раз не считаем.
+# по хешу позиции и второй раз не считаем.
 EXACT, LOWER, UPPER, ILLEGAL = range(4)   # что именно мы знаем про оценку
 TT_LIMIT = 500_000                        # столько записей держим, потом таблицу сбрасываем
 
@@ -95,9 +95,6 @@ class MinimaxBot(Bot):
         return scored
 
     def score_parallel(self, board, moves, me):
-        """Первый (самый перспективный) ход считаем сами, чтобы получить хорошую границу alpha,
-        остальные раздаём процессам. Границу они не обновляют (процессы не общаются),
-        поэтому отсечений чуть меньше, чем в последовательной версии, зато считают на всех ядрах"""
         key = board_key(board, me, me)
         scored = []
         rest = list(moves)
@@ -110,12 +107,15 @@ class MinimaxBot(Bot):
                 best = score
 
         pool = get_pool(self.workers)
+
         tasks = [(board, source, destination, me, self.depth, best - 1, self.use_tt)
                  for source, destination in rest]
+
         for (source, destination), (score, nodes) in zip(rest, pool.map(_root_task, tasks)):
             self.nodes += nodes
             if score is not None:
                 scored.append((score, (source, destination)))
+
         return scored
 
     def score_move(self, board, key, source, destination, me, alpha):
@@ -222,12 +222,8 @@ class MinimaxBot(Bot):
         return sorted(moves, key=priority, reverse=True)
 
 
-# ---------- несколько процессов ----------
-# Потоки в Python не ускоряют счёт (GIL), поэтому нужны именно процессы.
-# Пул один на всё приложение, чтобы партии не плодили свои процессы.
-
 _pool: ProcessPoolExecutor | None = None
-_worker_bots: dict[tuple[int, bool], MinimaxBot] = {}   # только внутри процессов-рабочих
+_worker_bots: dict[tuple[int, bool], MinimaxBot] = {}
 
 
 def get_pool(workers: int) -> ProcessPoolExecutor:

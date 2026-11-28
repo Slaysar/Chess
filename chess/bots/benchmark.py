@@ -38,7 +38,6 @@ def main() -> None:
     max_depth = int(sys.argv[1]) if len(sys.argv) > 1 else 4
     cores = os.cpu_count() or 1
 
-    # прогрев: поднимаем процессы заранее, чтобы их запуск не попал в замер
     MinimaxBot(depth=1, workers=cores).choose_move(make_game(OPENING))
 
     for title, moves in (("дебют", OPENING), ("тактика", TACTICS)):
@@ -46,7 +45,7 @@ def main() -> None:
             print(f"{title}, глубина {depth}")
             run("без таблицы", MinimaxBot(depth, seed=1, use_tt=False), make_game(moves))
             run("с таблицей", MinimaxBot(depth, seed=1), make_game(moves))
-            run(f"с таблицей, {cores} проц.", MinimaxBot(depth, seed=1, workers=cores), make_game(moves))
+            run(f"с таблицей, {cores} ядер", MinimaxBot(depth, seed=1, workers=cores), make_game(moves))
 
 
 if __name__ == "__main__":      # без этой проверки процессы-рабочие (spawn) запустят всё заново

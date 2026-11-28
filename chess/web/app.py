@@ -4,6 +4,7 @@ import secrets
 import uuid
 from pathlib import Path
 from threading import Lock
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, Header, HTTPException
@@ -70,7 +71,7 @@ def is_over(game_id: str, game: Game) -> bool:
 
 
 def state_of(game_id: str, game: Game) -> dict:
-    state = {**serialize(game), "opponent": opponents.get(game_id, "human"),
+    state: dict[str, Any] = {**serialize(game), "opponent": opponents.get(game_id, "human"),
              "waiting_for_opponent": game_id in invites}
     clock = clocks.get(game_id)
     if clock is not None:
